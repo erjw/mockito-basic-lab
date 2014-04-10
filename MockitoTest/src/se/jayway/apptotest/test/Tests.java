@@ -1,10 +1,9 @@
 package se.jayway.apptotest.test;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+
+import java.io.File;
+
 import se.jayway.apptotest.softwareupdate.RemoteSoftwareRepo;
 import se.jayway.apptotest.softwareupdate.SignatureVerifier;
 import se.jayway.apptotest.softwareupdate.SoftwareUpdater;
@@ -40,6 +39,22 @@ public class Tests extends AndroidTestCase {
 		assertEquals(SoftwareUpdater.UpdateResult.UPDATE_NOT_NEEDED, result);
 		verify(repo, never()).downloadLatestVersion();
 		verifyZeroInteractions(verifier);
+	}
+
+	public void testSignatureChecked() {
+		RemoteSoftwareRepo repo = mock(RemoteSoftwareRepo.class);
+		when(repo.getLatestVersion()).thenReturn(2);
+		when(repo.downloadLatestVersion()).thenReturn(new File("non-existing-file"));
+
+		SignatureVerifier verifier = mock(SignatureVerifier.class);
+		when(verifier.verifySignature(any(File.class))).thenReturn(false);
+
+		SoftwareUpdater.UpdateResult result = new SoftwareUpdater().update(
+				createNetworkMock(true, false), // Connected and not roaming.
+				1, repo, verifier);
+
+		assertEquals(SoftwareUpdater.UpdateResult.UPDATE_ABORTED_INVALID_SIGNATURE, result);
+		verify(verifier).verifySignature(any(File.class));
 	}
 
 	private NetworkInfo createNetworkMock(boolean connected, boolean roaming) {
